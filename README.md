@@ -3,6 +3,7 @@ A PyTorch implementation of WaveGlow from original paper [[1]](#references).
 
 
 
+
 ## References
 [1] [Prenger, R., Valle, R. and Catanzaro, B., 2019, May. Waveglow: A flow-based generative network for speech synthesis. In ICASSP 2019-2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) (pp. 3617-3621). IEEE.](https://arxiv.org/pdf/1811.00002.pdf)
 

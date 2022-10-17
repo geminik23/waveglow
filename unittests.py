@@ -2,14 +2,37 @@ import unittest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from modules import InvertibleConv1D
-
-
-
+from modules import InvertibleConv1D, WaveNetLike
 
 class WaveGlowTestCase(unittest.TestCase):
     def get_device(self):
         return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+    def test_wnlayer(self):
+        b = 16 # batch size
+        in_channels = 256
+        residual_channels = 256
+        skip_channels = 256
+        mel_channels = 80
+        hidden_channels = 20
+        max_dilations = 8
+        length = 1000
+
+        layer = WaveNetLike(in_channels, mel_channels, residual_channels, skip_channels, hidden_channels, max_dilations=8)
+        self.assertEqual(len(layer.layers), max_dilations+1)
+
+        dilations = [l.dilation for l in layer.layers]
+        self.assertEqual([1,2,4,8,16,32,64,128,256], dilations)
+
+        x = torch.randn(b, in_channels, length)
+        cond = torch.randn(b, mel_channels, length)
+        y = layer(x, cond)
+
+        target_shape = torch.Size([b, in_channels*2, length])
+        self.assertEqual(target_shape, y.shape)
+
+
 
     def test_invertible_1x1_conv(self):
         b = 1 # batch size
