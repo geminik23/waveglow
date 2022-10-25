@@ -7,8 +7,6 @@ import torch.nn.functional as F
 # our convolutions have 3 taps and are not causal.
 # gated-tanh nonlinearites of each layer as in WaveNet
 
-
-
 class GatedNonCausualLayer(nn.Module):
     """
     modification from my wavenet implementation
@@ -48,7 +46,7 @@ class GatedNonCausualLayer(nn.Module):
 
 #
 class WaveNetLike(nn.Module):
-    def __init__(self, in_channels, mel_channels, residual_channels, skip_channels, hidden_channels, kernel_size=3, max_dilations=8):
+    def __init__(self, in_channels, mel_channels, residual_channels, skip_channels, hidden_channels, kernel_size=3, max_dilation=8):
         super().__init__()
         # no details of WN layer structure from paper. 
         # refered from official implemenetation.(https://github.com/NVIDIA/waveglow)
@@ -58,9 +56,9 @@ class WaveNetLike(nn.Module):
 
         self.hidden_channels = hidden_channels # condition_channel in GatedNonCausalLayer
         self.kernel_size = kernel_size
-        self.max_dilations = max_dilations
+        self.max_dilation = max_dilation
 
-        dilations = [2**d for d in range(0, max_dilations+1)]
+        dilations = [2**d for d in range(0, max_dilation+1)]
         self.n_layer = len(dilations)
 
         self.pre_conv = nn.Conv1d(in_channels, residual_channels, 1)
@@ -93,9 +91,9 @@ class WaveNetLike(nn.Module):
 
 
 class AffineCoupling(nn.Module):
-    def __init__(self, WNObject, **kargs):
+    def __init__(self, WNObject, *args, **kargs):
         super().__init__()
-        self.wn = WNObject(**kargs)
+        self.wn = WNObject(*args, **kargs)
 
     def forward(self, input, cond, reverse=False):
         if reverse: 
@@ -107,8 +105,9 @@ class AffineCoupling(nn.Module):
             # concat(x_a, x_b)
             y = input
             ya, yb = y.chunk(2, 1)
-            log_s, t = self.F(ya, cond)
-            xb = (yb - t) / torch.exp(log_s.exp)
+            out = self.wn(ya, cond)
+            log_s, t = out.chunk(2, 1)
+            xb = (yb - t) / torch.exp(log_s)
             xa = ya
             x = torch.cat((xa, xb), 1)
             return x, -log_s
@@ -121,7 +120,8 @@ class AffineCoupling(nn.Module):
             x = input
             xa, xb = x.chunk(2, 1)
             za = xa
-            log_s, t = self.wn(xa, cond)
+            out = self.wn(xa, cond)
+            log_s, t = out.chunk(2, 1)
             zb = torch.exp(log_s)*xb + t
             z = torch.cat((za, zb), 1)
             return z, log_s
@@ -138,14 +138,14 @@ class InvertibleConv1D(nn.Module):
         q = torch.linalg.qr(torch.randn(num_channels, num_channels))[0].unsqueeze(-1)
         self.W = nn.Parameter(q)
 
-    def forward(self, input, reverse=True):
+    def forward(self, input, reverse=False):
         # input : [B, C, T]
         _,_, T = input.shape
 
         if reverse:
+            return F.conv1d(input, self.W.squeeze().inverse().unsqueeze(-1))
+        else:
             out = F.conv1d(input, self.W)
             # logdet 
             logdet = T*torch.slogdet(self.W.squeeze())[1]
             return out, logdet
-        else:
-            return F.conv1d(input, self.W.squeeze().inverse().unsqueeze(-1))
