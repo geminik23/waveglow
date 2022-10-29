@@ -23,10 +23,10 @@ class GatedNonCausualLayer(nn.Module):
         self.hidden_channels = residual_channels 
 
         self.padding = ((kernel_size-1)*dilation)//2
-        self.input_conv = nn.Conv1d(residual_channels, condition_channels, kernel_size=kernel_size, dilation=dilation, padding=self.padding)
+        self.input_conv = nn.utils.weight_norm(nn.Conv1d(residual_channels, condition_channels, kernel_size=kernel_size, dilation=dilation, padding=self.padding))
         self.sigm = nn.Sigmoid()
         self.tanh = nn.Tanh()
-        self.out_conv = nn.Conv1d(condition_channels, residual_channels + skip_channels, kernel_size=1)
+        self.out_conv = nn.utils.weight_norm(nn.Conv1d(condition_channels, residual_channels + skip_channels, kernel_size=1))
 
     def forward(self, input, cond):
         """
@@ -61,8 +61,8 @@ class WaveNetLike(nn.Module):
         dilations = [2**d for d in range(0, max_dilation+1)]
         self.n_layer = len(dilations)
 
-        self.pre_conv = nn.Conv1d(in_channels, residual_channels, 1)
-        self.cond_conv = nn.Conv1d(mel_channels, hidden_channels*self.n_layer, 1)
+        self.pre_conv = nn.utils.weight_norm(nn.Conv1d(in_channels, residual_channels, 1))
+        self.cond_conv = nn.utils.weight_norm(nn.Conv1d(mel_channels, hidden_channels*self.n_layer, 1))
 
         layers = []
         for d in dilations:

@@ -21,7 +21,7 @@ class WaveGlow(nn.Module):
 
 
         # upsample for melspec
-        self.upsample = nn.ConvTranspose1d(n_mels, n_mels, kernel_size=win_length, stride=hop_length)
+        self.upsample = nn.utils.weight_norm(nn.ConvTranspose1d(n_mels, n_mels, kernel_size=win_length, stride=hop_length))
 
         self.inv1x1 = nn.ModuleList()
         self.affines = nn.ModuleList()
@@ -36,7 +36,9 @@ class WaveGlow(nn.Module):
         self.start_n_channels = n_channels
     
 
-    def forward(self, x, mels):
+    def forward(self, input):
+        x, mels = input
+        x = x.float()
         # x: [B, T]
         # mels : [B, n_mels, n_frames]
 
@@ -59,7 +61,7 @@ class WaveGlow(nn.Module):
         mels = mels.reshape(batch_size, mels.size(1), -1).permute(0, 2, 1)
 
         output= []
-        ldj = torch.tensor([0.0])
+        ldj = torch.tensor([0.0]).to(x.device)
 
         for i in range(self.n_flows):
             if i % self.n_early_every == 0 and i:

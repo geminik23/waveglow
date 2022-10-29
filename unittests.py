@@ -42,7 +42,7 @@ class WaveGlowTestCase(unittest.TestCase):
         x = torch.randn((batch_size, audio_length))
         melspec_op = torchaudio.transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=win_length, win_length=win_length, hop_length=hop_length)
         y = melspec_op(x)
-        # _loss = model(x, y)
+        # _loss = model((x, y))
 
         out = model.inference(y)
         self.assertEqual(out.size(0), batch_size)
